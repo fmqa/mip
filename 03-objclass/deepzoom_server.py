@@ -121,6 +121,26 @@ def tile(slug, level, col, row, format):
     mat[:,:,0] *= 255 / mat[:,:,0].max()
     mat[:,:,1] *= 255 / mat[:,:,1].max()
     mat[:,:,2] *= 255 / mat[:,:,2].max()
+    if level > 16:
+        img = cv2.cvtColor(mat.astype('uint8'), cv2.COLOR_RGB2BGR)
+        ret, thresh = cv2.threshold(img, 200, 255, 0)
+        thresh = cv2.cvtColor(thresh, cv2.COLOR_BGR2GRAY)
+        _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            large = area >= 5
+            m = cv2.moments(cnt)
+            cv2.drawContours(img, [cnt], -1, (255, 0, 0) if large else (0, 255, 0), 1)
+            if large:
+                try:
+                    cx = int(m['m10'] / m['m00'])
+                    cy = int(m['m01'] / m['m00'])
+                except ZeroDivisionError:
+                    pass
+                else:
+                    cv2.circle(img, (cx, cy), 1, (0, 0, 255), -1)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        mat = img
     tile = Image.fromarray(mat.astype('uint8'))
     buf = PILBytesIO()
     tile.save(buf, format, quality=app.config['DEEPZOOM_TILE_QUALITY'])
